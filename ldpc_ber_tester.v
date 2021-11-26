@@ -76,7 +76,7 @@ module ldpc_ber_tester #(
 
     ldpc_ber_tester_ber_counter i_ber_counter (
         .clk                (data_clk),
-        .resetn             (data_resetn & sw_resetn),
+        .resetn             (data_resetn & data_sw_resetn),
         .last_mask          (data_last_mask),
         .s_axis_dout_tdata  (s_axis_dout_tdata),
         .s_axis_dout_tvalid (s_axis_dout_tvalid),
@@ -89,7 +89,7 @@ module ldpc_ber_tester #(
         .xoro_seed_base (SEED_ID)
     ) i_grng (
         .clk            (data_clk),
-        .resetn         (data_resetn & sw_resetn),
+        .resetn         (data_resetn & data_sw_resetn),
         .en             (data_en),
 
         .s_axis_tdata   (m_axis_din_tdata),
@@ -154,7 +154,7 @@ module ldpc_ber_tester #(
     up_axi #(
         .AXI_ADDRESS_WIDTH(AW)
     ) i_up_axi (
-        .up_rstn        (s_axi_resetn),
+        .up_rstn        (s_axi_aresetn),
         .up_clk         (s_axi_aclk),
 
         .up_axi_awvalid (s_axi_awvalid),

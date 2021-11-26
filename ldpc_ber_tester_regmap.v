@@ -20,7 +20,7 @@ module ldpc_ber_tester_regmap #(
     input       [ ADDRESS_WIDTH - 1:0]  up_waddr,
     input       [ 31:0]                 up_wdata,
 
-    
+
     // Data interface
     input                               data_clk,
 
@@ -85,13 +85,13 @@ module ldpc_ber_tester_regmap #(
             if (up_waddr == 'h14)
                 up_last_mask[31: 0] <= up_wdata;
 
-            if (up_waddr == 'h14)
+            if (up_waddr == 'h15)
                 up_last_mask[63:32] <= up_wdata;
 
-            if (up_waddr == 'h14)
+            if (up_waddr == 'h16)
                 up_last_mask[95:64] <= up_wdata;
 
-            if (up_waddr == 'h14)
+            if (up_waddr == 'h17)
                 up_last_mask[127:96] <= up_wdata;
 
         end else begin
@@ -173,10 +173,12 @@ module ldpc_ber_tester_regmap #(
         .ASYNC_CLK      (1)
     ) i_sync_sw_reset_event (
         .in_clk     (up_clk),
-        .in_event   (up_sw_resetn),
+        .in_event   (~up_sw_resetn),
         .out_clk    (data_clk),
-        .out_event  (data_sw_resetn)
+        .out_event  (data_sw_reset)
     );
+
+    assign data_sw_resetn = ~data_sw_reset;
 
     sync_data #(
         .NUM_OF_BITS    (56),

@@ -29,7 +29,6 @@ adi_ip_add_core_dependencies { \
 
 create_ip -name mult_gen -vendor xilinx.com -library ip -version 12.0 -module_name mult_23_23_24
 set_property -dict [list \
-    CONFIG.Component_Name {mult_23_23_24} \
     CONFIG.PortAWidth {23} \
     CONFIG.PortBWidth {23} \
     CONFIG.Multiplier_Construction {Use_Mults} \
@@ -38,6 +37,10 @@ set_property -dict [list \
     CONFIG.OutputWidthLow {22} \
     CONFIG.PipeStages {4} \
     CONFIG.ClockEnable {true}] [get_ips mult_23_23_24]
+
+generate_target {all} [get_files ldpc_ber_tester.srcs/sources_1/ip/mult_23_23_24/mult_23_23_24.xci]
+export_ip_user_files -of_objects [get_files ldpc_ber_tester.srcs/sources_1/ip/mult_23_23_24/mult_23_23_24.xci] -no_script -sync -force -quiet
+ipx::add_file ldpc_ber_tester.srcs/sources_1/ip/mult_23_23_24/mult_23_23_24.xci [ipx::get_file_groups xilinx_anylanguagebehavioralsimulation -of_objects [ipx::current_core]]
 
 # generate_target {instantiation_template} [get_files $project_location/boxmuller.srcs/sources_1/ip/mult_23_23_24/mult_23_23_24.xci]
 # update_compile_order -fileset sources_1
