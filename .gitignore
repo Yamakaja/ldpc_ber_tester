@@ -1,9 +1,14 @@
 # Vivado build files
 *.log
 *.jou
-ldpc_ber_tester.*
-xgui
+ldpc_ber_tester.gen
+ldpc_ber_tester.hw
+ldpc_ber_tester.cache
+ldpc_ber_tester.ip_user_files
+ldpc_ber_tester.srcs
+ldpc_ber_tester.xpr
 component.xml
+xgui
 
 # Vim
 *~
