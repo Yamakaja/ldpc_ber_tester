@@ -1,0 +1,36 @@
+<: set ComponentName [getComponentNameString] :>
+<: setOutputDirectory "./" :>
+<: setFileName [ttcl_add $ComponentName "_constr"] :>
+<: setFileExtension ".xdc" :>
+<: setFileProcessingOrder late :>
+
+## for all synchronization registers from util_cdc modules
+set_property ASYNC_REG TRUE \
+  [get_cells -hier {*cdc_sync_stage1_reg*}] \
+  [get_cells -hier {*cdc_sync_stage2_reg*}]
+
+# False paths for sync_data elements
+foreach instance {i_sync_en i_sync_awgn_control i_sync_finished_blocks i_sync_bit_errors} {
+    set_false_path \
+      -from [get_pins -hierarchical * -filter {NAME=~*/$instance/in_toggle_d1_reg/C}] \
+      -to [get_pins -hierarchical * -filter {NAME=~*/$instance/i_sync_out/cdc_sync_stage1_reg[*]/D}]
+
+    set_false_path \
+      -from [get_pins -hierarchical * -filter {NAME=~*/$instance/out_toggle_d1_reg/C}] \
+      -to [get_pins -hierarchical * -filter {NAME=~*/$instance/i_sync_in/cdc_sync_stage1_reg[*]/D}]
+
+    set_false_path \
+      -from [get_cells -hierarchical * -filter {NAME=~*/$instance/cdc_hold_reg[*]}] \
+      -to [get_cells -hierarchical * -filter {NAME=~*/$instance/out_data_reg[*]}]
+}
+
+# False paths for sync_event elements
+foreach instance {i_sync_sw_reset_event} {
+    set_false_path \
+      -from [get_pins -hierarchical * -filter {NAME=~*/$instance/in_toggle_d1_reg/C}] \
+      -to [get_pins -hierarchical * -filter {NAME=~*/$instance/i_sync_out/cdc_sync_stage1_reg[*]/D}]
+    
+    set_false_path \
+      -from [get_pins -hierarchical * -filter {NAME=~*/$instance/out_toggle_d1_reg/C}] \
+      -to [get_pins -hierarchical * -filter {NAME=~*/$instance/i_sync_in/cdc_sync_stage1_reg[*]/D}]
+}

@@ -1,0 +1,10 @@
+# Vivado build files
+*.log
+*.jou
+ldpc_ber_tester.*
+xgui
+component.xml
+
+# Vim
+*~
+
