@@ -9,7 +9,7 @@ module ldpc_ber_tester_ber_counter (
     output reg              s_axis_dout_tready,
     input                   s_axis_dout_tlast,
 
-    output reg  [ 31:0]     bit_errors,
+    output reg  [ 63:0]     bit_errors,
     output                  active
 );
 
@@ -68,7 +68,7 @@ module ldpc_ber_tester_ber_counter (
                 popcount <= popcount_d[0] + popcount_d[1] + popcount_d[2] + popcount_d[3];
 
             if (valid[1])
-                bit_errors <= bit_errors + {24'h0, popcount};
+                bit_errors <= bit_errors + {56'h0, popcount};
         end
     end
 

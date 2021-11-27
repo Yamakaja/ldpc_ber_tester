@@ -72,7 +72,7 @@ module ldpc_ber_tester #(
     wire    [ 127:0]        data_last_mask;
 
     wire    [  63:0]        data_finished_blocks;
-    wire    [  31:0]        data_bit_errors;
+    wire    [  63:0]        data_bit_errors;
 
     ldpc_ber_tester_ber_counter i_ber_counter (
         .clk                (data_clk),

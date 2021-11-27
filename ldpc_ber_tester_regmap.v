@@ -37,7 +37,7 @@ module ldpc_ber_tester_regmap #(
 
     // Simulation results
     input       [ 63:0]                 data_finished_blocks,
-    input       [ 31:0]                 data_bit_errors
+    input       [ 63:0]                 data_bit_errors
 );
 
     localparam  [ 31:0]                 CORE_VERSION = 32'h00010061; // 1.00.a
@@ -55,7 +55,7 @@ module ldpc_ber_tester_regmap #(
 
     // up input signals (after CDC)
     wire        [ 63:0]                 up_finished_blocks;
-    wire        [ 31:0]                 up_bit_errors;
+    wire        [ 63:0]                 up_bit_errors;
 
     // up write interface
     always @(posedge up_clk) begin
@@ -150,7 +150,8 @@ module ldpc_ber_tester_regmap #(
                 'h21: up_rdata <= up_finished_blocks[63:32];
 
                 // Bit error count
-                'h22: up_rdata <= up_bit_errors;
+                'h22: up_rdata <= up_bit_errors[31:0];
+                'h23: up_rdata <= up_bit_errors[63:32];
 
                 default: up_rdata <= 'h0;
 
@@ -191,7 +192,7 @@ module ldpc_ber_tester_regmap #(
     );
 
     sync_data #(
-        .NUM_OF_BITS    (96),
+        .NUM_OF_BITS    (128),
         .ASYNC_CLK      (1)
     ) i_sync_finished_blocks (
         .in_clk     (data_clk),
