@@ -8,6 +8,8 @@ adi_ip_files ldpc_ber_tester [list \
     "../boxmuller/src/grng_16.vhd" \
     "../boxmuller/src/lzd.vhd" \
     "../boxmuller/src/output_remapper.vhd" \
+    "../boxmuller/src/output_remapper_fixpt.vhd" \
+    "../boxmuller/src/output_remapper_fixpt_pkg.vhd" \
     "../boxmuller/src/pp_fcn.vhd" \
     "../boxmuller/src/pp_fcn_rom_pkg.vhd" \
     "../boxmuller/src/shifter.vhd" \
@@ -41,14 +43,6 @@ set_property -dict [list \
 generate_target {all} [get_files ldpc_ber_tester.srcs/sources_1/ip/mult_23_23_24/mult_23_23_24.xci]
 export_ip_user_files -of_objects [get_files ldpc_ber_tester.srcs/sources_1/ip/mult_23_23_24/mult_23_23_24.xci] -no_script -sync -force -quiet
 ipx::add_file ldpc_ber_tester.srcs/sources_1/ip/mult_23_23_24/mult_23_23_24.xci [ipx::get_file_groups xilinx_anylanguagebehavioralsimulation -of_objects [ipx::current_core]]
-
-# generate_target {instantiation_template} [get_files $project_location/boxmuller.srcs/sources_1/ip/mult_23_23_24/mult_23_23_24.xci]
-# update_compile_order -fileset sources_1
-# generate_target all [get_files  $project_location/boxmuller.srcs/sources_1/ip/mult_23_23_24/mult_23_23_24.xci]
-# catch { config_ip_cache -export [get_ips -all mult_23_23_24] }
-# export_ip_user_files -of_objects [get_files $project_location/boxmuller.srcs/sources_1/ip/mult_23_23_24/mult_23_23_24.xci] -no_script -sync -force -quiet
-# create_ip_run [get_files -of_objects [get_fileset sources_1] $project_location/boxmuller.srcs/sources_1/ip/mult_23_23_24/mult_23_23_24.xci]
-# launch_runs mult_23_23_24_synth_1 -jobs 4
 
 adi_ip_ttcl ldpc_ber_tester "ldpc_ber_tester_constr.ttcl"
 
