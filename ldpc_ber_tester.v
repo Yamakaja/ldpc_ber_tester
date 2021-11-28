@@ -104,7 +104,7 @@ module ldpc_ber_tester #(
 
     ldpc_ber_tester_ctrl i_ctrl (
         .clk            (data_clk),
-        .resetn         (data_resetn),
+        .resetn         (data_resetn & data_sw_resetn),
 
         .en             (data_en),
         .sw_resetn      (data_sw_resetn),
