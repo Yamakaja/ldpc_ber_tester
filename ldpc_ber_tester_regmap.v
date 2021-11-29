@@ -33,11 +33,13 @@ module ldpc_ber_tester_regmap #(
     output      [ 31:0]                 data_ctrl_word,
 
     // Which bits should be counted for the last transaction
+    output      [ 15:0]                 data_din_beats,
     output      [127:0]                 data_last_mask,
 
     // Simulation results
     input       [ 63:0]                 data_finished_blocks,
-    input       [ 63:0]                 data_bit_errors
+    input       [ 63:0]                 data_bit_errors,
+    input       [ 31:0]                 data_in_flight
 );
 
     localparam  [ 31:0]                 CORE_VERSION = 32'h00010061; // 1.00.a
@@ -50,12 +52,16 @@ module ldpc_ber_tester_regmap #(
     reg                                 up_sw_resetn;
     reg         [ 15:0]                 up_factor;
     reg         [  7:0]                 up_offset;
+    reg         [ 15:0]                 up_din_beats;
     reg         [ 31:0]                 up_ctrl_word;
     reg         [127:0]                 up_last_mask;
 
     // up input signals (after CDC)
     wire        [ 63:0]                 up_finished_blocks;
     wire        [ 63:0]                 up_bit_errors;
+    wire        [ 31:0]                 up_in_flight;
+
+    wire                                data_sw_reset;
 
     // up write interface
     always @(posedge up_clk) begin
@@ -67,6 +73,7 @@ module ldpc_ber_tester_regmap #(
             up_sw_resetn    <= 'h0;
             up_factor       <= 'h0;
             up_offset       <= 'h0;
+            up_din_beats    <= 'h0;
             up_ctrl_word    <= 'h0;
             up_last_mask    <= 'h0;
         end else if (up_wreq) begin
@@ -78,6 +85,9 @@ module ldpc_ber_tester_regmap #(
 
             if (up_waddr == 'h11)
                 {up_offset, up_factor} <= up_wdata[23:0];
+
+            if (up_waddr == 'h12)
+                up_din_beats <= up_wdata[15:0];
 
             if (up_waddr == 'h13)
                 up_ctrl_word <= up_wdata;
@@ -134,6 +144,10 @@ module ldpc_ber_tester_regmap #(
                 // AWGN config
                 'h11: up_rdata <= {8'h0, up_offset, up_factor};
 
+                // DIN Beat count. For a code with N code bits, this value
+                // should be = ceil(N/16)
+                'h12: up_rdata <= {16'h0, up_din_beats};
+
                 // SD-FEC CTRL word
                 'h13: up_rdata <= up_ctrl_word;
 
@@ -153,21 +167,17 @@ module ldpc_ber_tester_regmap #(
                 'h22: up_rdata <= up_bit_errors[31:0];
                 'h23: up_rdata <= up_bit_errors[63:32];
 
+                // Last status word
+                // 'h24: up_rdata <= up_last_status;
+
+                // In-flight transactions
+                'h24: up_rdata <= up_in_flight;
+
                 default: up_rdata <= 'h0;
 
             endcase
         end
     end
-
-    sync_data #(
-        .NUM_OF_BITS    (1),
-        .ASYNC_CLK      (1)
-    ) i_sync_en (
-        .in_clk     (up_clk),
-        .in_data    (up_en),
-        .out_clk    (data_clk),
-        .out_data   (data_en)
-    );
 
     sync_event #(
         .NUM_OF_EVENTS  (1),
@@ -182,33 +192,37 @@ module ldpc_ber_tester_regmap #(
     assign data_sw_resetn = ~data_sw_reset;
 
     sync_data #(
-        .NUM_OF_BITS    (56),
+        .NUM_OF_BITS    (1+16+8+16+32+128),
         .ASYNC_CLK      (1)
-    ) i_sync_awgn_control (
+    ) i_sync_control (
         .in_clk     (up_clk),
-        .in_data    ({up_factor, up_offset, up_ctrl_word}),
+        .in_data    ({up_en,
+                      up_factor,
+                      up_offset,
+                      up_din_beats,
+                      up_ctrl_word,
+                      up_last_mask}),
         .out_clk    (data_clk),
-        .out_data   ({data_factor, data_offset, data_ctrl_word})
+        .out_data   ({data_en,
+                      data_factor,
+                      data_offset,
+                      data_din_beats,
+                      data_ctrl_word,
+                      data_last_mask})
     );
 
     sync_data #(
-        .NUM_OF_BITS    (128),
+        .NUM_OF_BITS    (64+64+32),
         .ASYNC_CLK      (1)
-    ) i_sync_finished_blocks (
+    ) i_sync_feedback (
         .in_clk     (data_clk),
-        .in_data    ({data_finished_blocks, data_bit_errors}),
+        .in_data    ({data_finished_blocks,
+                      data_bit_errors,
+                      data_in_flight}),
         .out_clk    (up_clk),
-        .out_data   ({up_finished_blocks, up_bit_errors})
-    );
-
-    sync_data #(
-        .NUM_OF_BITS    (128),
-        .ASYNC_CLK      (1)
-    ) i_sync_bit_errors (
-        .in_clk     (up_clk),
-        .in_data    (up_last_mask),
-        .out_clk    (data_clk),
-        .out_data   (data_last_mask)
+        .out_data   ({up_finished_blocks,
+                      up_bit_errors,
+                      up_in_flight})
     );
 
 endmodule

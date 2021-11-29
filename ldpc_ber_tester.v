@@ -68,11 +68,13 @@ module ldpc_ber_tester #(
     wire                    data_sw_resetn;
     wire    [  15:0]        data_factor;
     wire    [   7:0]        data_offset;
+    wire    [  15:0]        data_din_beats;
     wire    [  31:0]        data_ctrl_word;
     wire    [ 127:0]        data_last_mask;
 
     wire    [  63:0]        data_finished_blocks;
     wire    [  63:0]        data_bit_errors;
+    wire    [  31:0]        data_in_flight;
 
     ldpc_ber_tester_ber_counter i_ber_counter (
         .clk                (data_clk),
@@ -92,15 +94,15 @@ module ldpc_ber_tester #(
         .resetn         (data_resetn & data_sw_resetn),
         .en             (data_en),
 
-        .s_axis_tdata   (m_axis_din_tdata),
-        .s_axis_tready  (m_axis_din_tready),
-        .s_axis_tvalid  (m_axis_din_tvalid),
+        .m_axis_tdata   (m_axis_din_tdata),
+        .m_axis_tready  (m_axis_din_tready),
+        .m_axis_tvalid  (m_axis_din_tvalid),
+        .m_axis_tlast   (m_axis_din_tlast),
 
-        .factor         (data_factor),
-        .offset         (data_offset)
+        .factor_in      (data_factor),
+        .offset_in      (data_offset),
+        .din_beats      (data_din_beats)
     );
-
-    assign m_axis_din_tlast = 'h0;
 
     ldpc_ber_tester_ctrl i_ctrl (
         .clk            (data_clk),
@@ -116,7 +118,11 @@ module ldpc_ber_tester #(
         .status_ready   (s_axis_status_tready),
         .status_data    (s_axis_status_tdata),
 
-        .finished_blocks(data_finished_blocks)
+        .dout_finish    (s_axis_dout_tlast && s_axis_dout_tvalid && s_axis_dout_tready),
+
+        .finished_blocks(data_finished_blocks),
+        .in_flight      (data_in_flight)
+
     );
 
     assign m_axis_ctrl_tdata = data_ctrl_word;
@@ -144,11 +150,13 @@ module ldpc_ber_tester #(
         .data_sw_resetn (data_sw_resetn),
         .data_factor    (data_factor),
         .data_offset    (data_offset),
+        .data_din_beats (data_din_beats),
         .data_ctrl_word (data_ctrl_word),
         .data_last_mask (data_last_mask),
 
         .data_finished_blocks (data_finished_blocks),
-        .data_bit_errors (data_bit_errors)
+        .data_bit_errors (data_bit_errors),
+        .data_in_flight (data_in_flight)
     );
 
     up_axi #(
