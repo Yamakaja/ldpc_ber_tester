@@ -75,53 +75,46 @@ module ldpc_ber_tester #(
     wire    [  63:0]        data_finished_blocks;
     wire    [  63:0]        data_bit_errors;
     wire    [  31:0]        data_in_flight;
+    wire    [  31:0]        data_last_status;
 
     ldpc_ber_tester_ber_counter i_ber_counter (
-        .clk                (data_clk),
-        .resetn             (data_resetn & data_sw_resetn),
-        .last_mask          (data_last_mask),
-        .s_axis_dout_tdata  (s_axis_dout_tdata),
-        .s_axis_dout_tvalid (s_axis_dout_tvalid),
-        .s_axis_dout_tready (s_axis_dout_tready),
-        .s_axis_dout_tlast  (s_axis_dout_tlast),
-        .bit_errors         (data_bit_errors)
+        .clk                    (data_clk),
+        .resetn                 (data_resetn & data_sw_resetn),
+        .last_mask              (data_last_mask),
+        .s_axis_dout_tdata      (s_axis_dout_tdata),
+        .s_axis_dout_tvalid     (s_axis_dout_tvalid),
+        .s_axis_dout_tready     (s_axis_dout_tready),
+        .s_axis_dout_tlast      (s_axis_dout_tlast),
+        .bit_errors             (data_bit_errors)
     );
 
-    grng_16 #(
-        .xoro_seed_base (SEED_ID)
-    ) i_grng (
-        .clk            (data_clk),
-        .resetn         (data_resetn & data_sw_resetn),
-        .en             (data_en),
+    ldpc_ber_tester_axis_gen i_ctrl (
+        .clk                    (data_clk),
+        .resetn                 (data_resetn),
+        .en                     (data_en),
+        .sw_resetn              (data_sw_resetn),
 
-        .m_axis_tdata   (m_axis_din_tdata),
-        .m_axis_tready  (m_axis_din_tready),
-        .m_axis_tvalid  (m_axis_din_tvalid),
-        .m_axis_tlast   (m_axis_din_tlast),
+        .factor                 (data_factor),
+        .offset                 (data_offset),
+        .din_beats              (data_din_beats),
 
-        .factor_in      (data_factor),
-        .offset_in      (data_offset),
-        .din_beats      (data_din_beats)
-    );
+        .ctrl_tvalid            (m_axis_ctrl_tvalid),
+        .ctrl_tready            (m_axis_ctrl_tready),
 
-    ldpc_ber_tester_ctrl i_ctrl (
-        .clk            (data_clk),
-        .resetn         (data_resetn & data_sw_resetn),
+        .din_tvalid             (m_axis_din_tvalid),
+        .din_tready             (m_axis_din_tready),
+        .din_tlast              (m_axis_din_tlast),
+        .din_tdata              (m_axis_din_tdata),
 
-        .en             (data_en),
-        .sw_resetn      (data_sw_resetn),
+        .status_tvalid          (s_axis_status_tvalid),
+        .status_tready          (s_axis_status_tready),
+        .status_tdata           (s_axis_status_tdata),
 
-        .ctrl_valid     (m_axis_ctrl_tvalid),
-        .ctrl_ready     (m_axis_ctrl_tready),
+        .dout_finish            (s_axis_dout_tlast && s_axis_dout_tvalid && s_axis_dout_tready),
 
-        .status_valid   (s_axis_status_tvalid),
-        .status_ready   (s_axis_status_tready),
-        .status_data    (s_axis_status_tdata),
-
-        .dout_finish    (s_axis_dout_tlast && s_axis_dout_tvalid && s_axis_dout_tready),
-
-        .finished_blocks(data_finished_blocks),
-        .in_flight      (data_in_flight)
+        .finished_blocks        (data_finished_blocks),
+        .in_flight              (data_in_flight),
+        .last_status            (data_last_status)
 
     );
 
@@ -131,65 +124,66 @@ module ldpc_ber_tester #(
         .SEED_ID (SEED_ID),
         .ADDRESS_WIDTH (AW-2)
     ) i_regmap (
-        .up_clk         (s_axi_aclk),
-        .up_resetn      (s_axi_aresetn),
+        .up_clk                 (s_axi_aclk),
+        .up_resetn              (s_axi_aresetn),
 
-        .up_rreq        (up_rreq),
-        .up_rack        (up_rack),
-        .up_raddr       (up_raddr),
-        .up_rdata       (up_rdata),
+        .up_rreq                (up_rreq),
+        .up_rack                (up_rack),
+        .up_raddr               (up_raddr),
+        .up_rdata               (up_rdata),
 
-        .up_wreq        (up_wreq),
-        .up_wack        (up_wack),
-        .up_waddr       (up_waddr),
-        .up_wdata       (up_wdata),
+        .up_wreq                (up_wreq),
+        .up_wack                (up_wack),
+        .up_waddr               (up_waddr),
+        .up_wdata               (up_wdata),
 
-        .data_clk       (data_clk),
+        .data_clk               (data_clk),
         
-        .data_en        (data_en),
-        .data_sw_resetn (data_sw_resetn),
-        .data_factor    (data_factor),
-        .data_offset    (data_offset),
-        .data_din_beats (data_din_beats),
-        .data_ctrl_word (data_ctrl_word),
-        .data_last_mask (data_last_mask),
+        .data_en                (data_en),
+        .data_sw_resetn         (data_sw_resetn),
+        .data_factor            (data_factor),
+        .data_offset            (data_offset),
+        .data_din_beats         (data_din_beats),
+        .data_ctrl_word         (data_ctrl_word),
+        .data_last_mask         (data_last_mask),
 
-        .data_finished_blocks (data_finished_blocks),
-        .data_bit_errors (data_bit_errors),
-        .data_in_flight (data_in_flight)
+        .data_finished_blocks   (data_finished_blocks),
+        .data_bit_errors        (data_bit_errors),
+        .data_in_flight         (data_in_flight),
+        .data_last_status       (data_last_status)
     );
 
     up_axi #(
         .AXI_ADDRESS_WIDTH(AW)
     ) i_up_axi (
-        .up_rstn        (s_axi_aresetn),
-        .up_clk         (s_axi_aclk),
+        .up_rstn                (s_axi_aresetn),
+        .up_clk                 (s_axi_aclk),
 
-        .up_axi_awvalid (s_axi_awvalid),
-        .up_axi_awaddr  (s_axi_awaddr),
-        .up_axi_awready (s_axi_awready),
-        .up_axi_wvalid  (s_axi_wvalid),
-        .up_axi_wdata   (s_axi_wdata),
-        .up_axi_wstrb   (s_axi_wstrb),
-        .up_axi_wready  (s_axi_wready),
-        .up_axi_bvalid  (s_axi_bvalid),
-        .up_axi_bresp   (s_axi_bresp),
-        .up_axi_bready  (s_axi_bready),
-        .up_axi_arvalid (s_axi_arvalid),
-        .up_axi_araddr  (s_axi_araddr),
-        .up_axi_arready (s_axi_arready),
-        .up_axi_rvalid  (s_axi_rvalid),
-        .up_axi_rresp   (s_axi_rresp),
-        .up_axi_rdata   (s_axi_rdata),
-        .up_axi_rready  (s_axi_rready),
+        .up_axi_awvalid         (s_axi_awvalid),
+        .up_axi_awaddr          (s_axi_awaddr),
+        .up_axi_awready         (s_axi_awready),
+        .up_axi_wvalid          (s_axi_wvalid),
+        .up_axi_wdata           (s_axi_wdata),
+        .up_axi_wstrb           (s_axi_wstrb),
+        .up_axi_wready          (s_axi_wready),
+        .up_axi_bvalid          (s_axi_bvalid),
+        .up_axi_bresp           (s_axi_bresp),
+        .up_axi_bready          (s_axi_bready),
+        .up_axi_arvalid         (s_axi_arvalid),
+        .up_axi_araddr          (s_axi_araddr),
+        .up_axi_arready         (s_axi_arready),
+        .up_axi_rvalid          (s_axi_rvalid),
+        .up_axi_rresp           (s_axi_rresp),
+        .up_axi_rdata           (s_axi_rdata),
+        .up_axi_rready          (s_axi_rready),
 
-        .up_wreq        (up_wreq),
-        .up_waddr       (up_waddr),
-        .up_wdata       (up_wdata),
-        .up_wack        (up_wack),
-        .up_rreq        (up_rreq),
-        .up_raddr       (up_raddr),
-        .up_rdata       (up_rdata),
-        .up_rack        (up_rack)
+        .up_wreq                (up_wreq),
+        .up_waddr               (up_waddr),
+        .up_wdata               (up_wdata),
+        .up_wack                (up_wack),
+        .up_rreq                (up_rreq),
+        .up_raddr               (up_raddr),
+        .up_rdata               (up_rdata),
+        .up_rack                (up_rack)
     );
 endmodule

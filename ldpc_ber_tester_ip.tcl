@@ -3,11 +3,9 @@ source $ad_hdl_dir/library/scripts/adi_ip_xilinx.tcl
 
 adi_ip_create ldpc_ber_tester
 adi_ip_files ldpc_ber_tester [list \
-    "../boxmuller/src/bm_axis_gen.vhd" \
     "../boxmuller/src/boxmuller.vhd" \
     "../boxmuller/src/grng_16.vhd" \
     "../boxmuller/src/lzd.vhd" \
-    "../boxmuller/src/output_remapper.vhd" \
     "../boxmuller/src/output_remapper_fixpt.vhd" \
     "../boxmuller/src/output_remapper_fixpt_pkg.vhd" \
     "../boxmuller/src/pp_fcn.vhd" \
@@ -16,10 +14,12 @@ adi_ip_files ldpc_ber_tester [list \
     "../boxmuller/src/xoroshiro128plus.vhd" \
     "$ad_hdl_dir/library/common/up_axi.v" \
     "ldpc_ber_tester_ber_counter.v" \
-    "ldpc_ber_tester_ctrl.v" \
+    "ldpc_ber_tester_axis_gen.vhd" \
     "ldpc_ber_tester_regmap.v" \
     "ldpc_ber_tester.v"
 ]
+
+set_property FILE_TYPE {VHDL 2008} [get_files ldpc_ber_tester_axis_gen.vhd]
 
 adi_ip_properties ldpc_ber_tester
 

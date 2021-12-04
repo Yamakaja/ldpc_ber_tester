@@ -39,7 +39,8 @@ module ldpc_ber_tester_regmap #(
     // Simulation results
     input       [ 63:0]                 data_finished_blocks,
     input       [ 63:0]                 data_bit_errors,
-    input       [ 31:0]                 data_in_flight
+    input       [ 31:0]                 data_in_flight,
+    input       [ 31:0]                 data_last_status
 );
 
     localparam  [ 31:0]                 CORE_VERSION = 32'h00010061; // 1.00.a
@@ -60,6 +61,7 @@ module ldpc_ber_tester_regmap #(
     wire        [ 63:0]                 up_finished_blocks;
     wire        [ 63:0]                 up_bit_errors;
     wire        [ 31:0]                 up_in_flight;
+    wire        [ 31:0]                 up_last_status;
 
     wire                                data_sw_reset;
 
@@ -167,11 +169,11 @@ module ldpc_ber_tester_regmap #(
                 'h22: up_rdata <= up_bit_errors[31:0];
                 'h23: up_rdata <= up_bit_errors[63:32];
 
-                // Last status word
-                // 'h24: up_rdata <= up_last_status;
-
                 // In-flight transactions
                 'h24: up_rdata <= up_in_flight;
+
+                // Last status word
+                'h25: up_rdata <= up_last_status;
 
                 default: up_rdata <= 'h0;
 
@@ -212,17 +214,19 @@ module ldpc_ber_tester_regmap #(
     );
 
     sync_data #(
-        .NUM_OF_BITS    (64+64+32),
+        .NUM_OF_BITS    (64+64+32+32),
         .ASYNC_CLK      (1)
     ) i_sync_feedback (
         .in_clk     (data_clk),
         .in_data    ({data_finished_blocks,
                       data_bit_errors,
-                      data_in_flight}),
+                      data_in_flight,
+                      data_last_status}),
         .out_clk    (up_clk),
         .out_data   ({up_finished_blocks,
                       up_bit_errors,
-                      up_in_flight})
+                      up_in_flight,
+                      up_last_status})
     );
 
 endmodule

@@ -5,6 +5,10 @@ module ldpc_ber_tester_ctrl (
     input               en,
     input               sw_resetn,
 
+    input     [15:0]    factor,
+    input     [ 7:0]    offset,
+    input     [15:0]    din_beats,
+
     output reg          ctrl_valid,
     input               ctrl_ready,
 
@@ -33,7 +37,6 @@ module ldpc_ber_tester_ctrl (
 
             if (status_ready & status_valid)
                 finished_blocks <= finished_blocks + 1;
-
 
             // Transactions start with a CTRL word to provide information
             // about the contents of the DIN stream. Once the data has been
