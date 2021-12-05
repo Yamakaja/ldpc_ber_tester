@@ -3,6 +3,9 @@ use ieee.std_logic_1164.all;
 use ieee.std_logic_misc.all;
 use ieee.numeric_std.all;
 
+Library UNISIM;
+use UNISIM.vcomponents.all;
+
 entity ldpc_ber_tester_axis_gen is
     generic (
         SEED_ID         : integer := 0;
@@ -82,6 +85,8 @@ architecture beh of ldpc_ber_tester_axis_gen is
     signal w_running        : std_logic;
     signal w_din_finish     : std_logic;
 
+    signal w_sub_clk        : std_logic;
+
 begin
 
     finished_blocks <= std_logic_vector(r_finished_blocks);
@@ -141,6 +146,32 @@ begin
         end if;
     end process stats;
 
+--  BUFGCE_inst : BUFGCE
+--      generic map (
+--         CE_TYPE => "SYNC",               -- ASYNC, HARDSYNC, SYNC
+--         IS_CE_INVERTED => '0',           -- Programmable inversion on CE
+--         IS_I_INVERTED => '0',            -- Programmable inversion on I
+--         SIM_DEVICE => "ULTRASCALE_PLUS"  -- ULTRASCALE, ULTRASCALE_PLUS
+--      )
+--      port map (
+--         O    => w_sub_clk,
+--         CE   => w_sub_en,
+--         I    => clk
+--      );
+
+--  i_grng : grng_16
+--      generic map (
+--          xoro_seed_base => SEED_ID
+--      )
+--      port map (
+--          clk     => w_sub_clk,
+--          resetn  => resetn,
+--          en      => '1',
+--          data    => w_remapped,
+--          factor  => r_factor,
+--          offset  => r_offset
+--      );
+
     i_grng : grng_16
         generic map (
             xoro_seed_base => SEED_ID
@@ -192,6 +223,7 @@ begin
     din_tlast   <= r_axis_tlast;
 
     w_sub_en <= '1' when r_state /= IDLE or w_running = '1' else '0';
+--  w_sub_en <= '1' when r_state /= IDLE or w_running = '1' or resetn = '0' else '0';
 
     state_machine : process (clk)
     begin

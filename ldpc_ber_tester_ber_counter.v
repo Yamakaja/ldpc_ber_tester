@@ -9,8 +9,7 @@ module ldpc_ber_tester_ber_counter (
     output reg              s_axis_dout_tready,
     input                   s_axis_dout_tlast,
 
-    output reg  [ 63:0]     bit_errors,
-    output                  active
+    output reg  [ 63:0]     bit_errors
 );
 
     function automatic [6:0] popcount_8(input [7:0] bits);
@@ -21,20 +20,21 @@ module ldpc_ber_tester_ber_counter (
         popcount_32 = popcount_8(bits[7:0]) + popcount_8(bits[15:8]) + popcount_8(bits[23:16]) + popcount_8(bits[31:24]);
     endfunction
 
+    reg [127:0] data_d;
+    reg         last_d;
     reg [7:0] popcount_d [0:3];
     reg [7:0] popcount;
-    reg [1:0] valid;
-    reg       busy;
-
-    assign active = busy | |valid;
+    reg [2:0] valid;
+    reg [9:0] i;
 
     always @(posedge clk) begin
         if (!resetn) begin
-            busy <= 'h0;
             bit_errors <= 'h0;
             s_axis_dout_tready <= 'h0;
+            data_d <= 'h0;
+            last_d <= 'h0;
 
-            for (integer i = 0; i < 4; i = i + 1)
+            for (i = 0; i < 4; i = i + 1)
                 popcount_d[i] <= 'h0;
 
             popcount <= 'h0;
@@ -44,31 +44,30 @@ module ldpc_ber_tester_ber_counter (
             s_axis_dout_tready <= 'h1;
 
             if (s_axis_dout_tready && s_axis_dout_tvalid) begin
-                busy <= !s_axis_dout_tlast;
+                data_d <= s_axis_dout_tdata;
+                last_d <= s_axis_dout_tlast;
 
                 if (s_axis_dout_tlast)
                     s_axis_dout_tready <= 'h0;
+            end
+            valid[0] <= s_axis_dout_tready && s_axis_dout_tvalid;
 
-                valid[0] <= 1'b1;
-
-                for (integer i = 0; i < 4; i = i + 1) begin
-                    if (s_axis_dout_tlast)
-                        popcount_d[i] <= popcount_32(s_axis_dout_tdata[i*32 +: 32] & last_mask[i*32 +: 32]);
+            if (valid[0]) begin
+                for (i = 0; i < 4; i = i + 1) begin
+                    if (last_d)
+                        popcount_d[i] <= popcount_32(data_d[i*32 +: 32] & last_mask[i*32 +: 32]);
                     else
-                        popcount_d[i] <= popcount_32(s_axis_dout_tdata[i*32 +: 32]);
+                        popcount_d[i] <= popcount_32(data_d[i*32 +: 32]);
                 end
-
-            end else begin
-                valid[0] <= 1'b0;
             end
 
-            valid[1] <= valid[0];
-
-            if (valid[0])
+            if (valid[1])
                 popcount <= popcount_d[0] + popcount_d[1] + popcount_d[2] + popcount_d[3];
 
-            if (valid[1])
+            if (valid[2])
                 bit_errors <= bit_errors + {56'h0, popcount};
+
+            valid[2:1] <= valid[1:0];
         end
     end
 

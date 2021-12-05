@@ -44,6 +44,15 @@ generate_target {all} [get_files ldpc_ber_tester.srcs/sources_1/ip/mult_23_23_24
 export_ip_user_files -of_objects [get_files ldpc_ber_tester.srcs/sources_1/ip/mult_23_23_24/mult_23_23_24.xci] -no_script -sync -force -quiet
 ipx::add_file ldpc_ber_tester.srcs/sources_1/ip/mult_23_23_24/mult_23_23_24.xci [ipx::get_file_groups xilinx_anylanguagebehavioralsimulation -of_objects [ipx::current_core]]
 
+foreach {f} [list \
+    ldpc_ber_tester.srcs/sources_1/ip/mult_23_23_24/mult_23_23_24.xci       \
+    ldpc_ber_tester.gen/sources_1/ip/mult_23_23_24/mult_23_23_24.vho        \
+    ldpc_ber_tester.gen/sources_1/ip/mult_23_23_24/mult_23_23_24.veo        \
+    ldpc_ber_tester.gen/sources_1/ip/mult_23_23_24/mult_23_23_24_ooc.xdc    \
+    ] {                                                                     \
+    ipx::add_file $f [ipx::get_file_groups xilinx_anylanguagesynthesis -of_objects [ipx::current_core]]
+}
+
 adi_ip_ttcl ldpc_ber_tester "ldpc_ber_tester_constr.ttcl"
 
 set_property display_name "LDPC BER Tester" [ipx::current_core]
