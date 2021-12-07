@@ -6,8 +6,7 @@ adi_ip_files ldpc_ber_tester [list \
     "../boxmuller/src/boxmuller.vhd" \
     "../boxmuller/src/grng_16.vhd" \
     "../boxmuller/src/lzd.vhd" \
-    "../boxmuller/src/output_remapper_fixpt.vhd" \
-    "../boxmuller/src/output_remapper_fixpt_pkg.vhd" \
+    "../boxmuller/src/output_remapper.vhd" \
     "../boxmuller/src/pp_fcn.vhd" \
     "../boxmuller/src/pp_fcn_rom_pkg.vhd" \
     "../boxmuller/src/shifter.vhd" \
