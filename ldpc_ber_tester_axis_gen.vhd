@@ -3,9 +3,6 @@ use ieee.std_logic_1164.all;
 use ieee.std_logic_misc.all;
 use ieee.numeric_std.all;
 
-Library UNISIM;
-use UNISIM.vcomponents.all;
-
 entity ldpc_ber_tester_axis_gen is
     generic (
         SEED_ID         : integer := 0;
@@ -13,7 +10,7 @@ entity ldpc_ber_tester_axis_gen is
     );
     port (
         clk             : in  std_logic;                        --! Clock input
-        resetn          : in  std_logic;                        --! Asynchronous inverted reset
+        resetn          : in  std_logic;                        --! Synchronous inverted reset
         en              : in  std_logic;                        --! Clock enable
         sw_resetn       : in  std_logic;                        --! Software Reset Input
 
@@ -37,8 +34,10 @@ entity ldpc_ber_tester_axis_gen is
 
         finished_blocks : out std_logic_vector(63 downto 0);    --! How many blocks have been processed
         in_flight       : out std_logic_vector(31 downto 0);    --! The submitted amount of blocks minus the finished amount, should never exceed 16 or so
-        last_status     : out std_logic_vector(31 downto 0)     --! Last status from SD-FEC Core. For debugging purposes
-
+        last_status     : out std_logic_vector(31 downto 0);    --! Last status from SD-FEC Core. For debugging purposes
+        iter_count      : out std_logic_vector(63 downto 0);    --! Total (cumulative!) amount of iterations the decoder performend.
+        failed_blocks   : out std_logic_vector(63 downto 0);    --! How many blocks failed to decode
+        last_failed     : out std_logic_vector(63 downto 0)     --! Last block index which failed to decode
     );
 end ldpc_ber_tester_axis_gen;
 
@@ -62,6 +61,8 @@ architecture beh of ldpc_ber_tester_axis_gen is
     type t_state is (IDLE, INITIALIZING, RUNNING);
     signal r_state          : t_state;
 
+    signal r_int_resetn     : std_logic; --! Internal reset signal buffer
+
     signal r_valid_counter  : unsigned(COUNTER_WIDTH - 1 downto 0);
     signal r_axis_tdata     : std_logic_vector(din_tdata'range);
     signal r_axis_tvalid    : std_logic;
@@ -71,13 +72,16 @@ architecture beh of ldpc_ber_tester_axis_gen is
     signal r_factor         : std_logic_vector(15 downto 0);
     signal r_offset         : std_logic_vector(7 downto 0);
 
-    signal r_finished_blocks: unsigned(63 downto 0);
-    signal r_in_flight      : unsigned(31 downto 0);
     signal r_ctrl_vs_din    : unsigned(6 downto 0);
     signal r_ctrl_tvalid    : std_logic;
     signal r_status_tready  : std_logic;
 
+    signal r_finished_blocks: unsigned(63 downto 0);
+    signal r_in_flight      : unsigned(31 downto 0);
     signal r_last_status    : std_logic_vector(31 downto 0);
+    signal r_iter_count     : unsigned(63 downto 0);
+    signal r_failed_blocks  : unsigned(63 downto 0);
+    signal r_last_failed    : unsigned(63 downto 0);
 
     signal w_sub_en         : std_logic;
     signal w_remapped       : std_logic_vector(8*16 - 1 downto 0);
@@ -87,6 +91,9 @@ architecture beh of ldpc_ber_tester_axis_gen is
 
     signal w_sub_clk        : std_logic;
 
+    signal w_status_iter    : unsigned(5 downto 0);
+    signal w_status_pass    : std_logic;
+
 begin
 
     finished_blocks <= std_logic_vector(r_finished_blocks);
@@ -94,9 +101,21 @@ begin
     ctrl_tvalid     <= r_ctrl_tvalid;
     status_tready   <= r_status_tready;
     last_status     <= r_last_status;
+    iter_count      <= std_logic_vector(r_iter_count);
+    failed_blocks   <= std_logic_vector(r_failed_blocks);
+    last_failed     <= std_logic_vector(r_last_failed);
 
     w_running       <= or_reduce(std_logic_vector(r_ctrl_vs_din));
     w_din_finish    <= r_axis_tvalid and r_axis_tlast and din_tready;
+    w_status_iter   <= unsigned(status_tdata(23 downto 18));
+    w_status_pass   <= status_tdata(15);
+
+    reset_buf : process (clk)
+    begin
+        if rising_edge(clk) then
+            r_int_resetn <= resetn and sw_resetn;
+        end if;
+    end process reset_buf;
 
     stats : process (clk)
     begin
@@ -106,8 +125,11 @@ begin
                 r_in_flight         <= (others => '0');
                 r_ctrl_vs_din       <= (others => '0');
                 r_ctrl_tvalid       <= '0';
-                r_status_tready     <= '1';
+                r_status_tready     <= '0';
                 r_last_status       <= (others => '0');
+                r_iter_count        <= (others => '0');
+                r_failed_blocks     <= (others => '0');
+                r_last_failed       <= (others => '0');
             else
                 r_status_tready <= '1';
 
@@ -118,6 +140,11 @@ begin
                 if r_status_tready = '1' and status_tvalid = '1' then
                     r_finished_blocks   <= r_finished_blocks + 1;
                     r_last_status       <= status_tdata;
+                    r_iter_count        <= r_iter_count + w_status_iter;
+                    if w_status_pass = '0' then
+                        r_failed_blocks <= r_failed_blocks + 1;
+                        r_last_failed   <= r_finished_blocks;
+                    end if;
                 end if;
                 
                 -- Transactions start with a CTRL word to provide information
@@ -146,39 +173,13 @@ begin
         end if;
     end process stats;
 
---  BUFGCE_inst : BUFGCE
---      generic map (
---         CE_TYPE => "SYNC",               -- ASYNC, HARDSYNC, SYNC
---         IS_CE_INVERTED => '0',           -- Programmable inversion on CE
---         IS_I_INVERTED => '0',            -- Programmable inversion on I
---         SIM_DEVICE => "ULTRASCALE_PLUS"  -- ULTRASCALE, ULTRASCALE_PLUS
---      )
---      port map (
---         O    => w_sub_clk,
---         CE   => w_sub_en,
---         I    => clk
---      );
-
---  i_grng : grng_16
---      generic map (
---          xoro_seed_base => SEED_ID
---      )
---      port map (
---          clk     => w_sub_clk,
---          resetn  => resetn,
---          en      => '1',
---          data    => w_remapped,
---          factor  => r_factor,
---          offset  => r_offset
---      );
-
     i_grng : grng_16
         generic map (
             xoro_seed_base => SEED_ID
         )
         port map (
             clk     => clk,
-            resetn  => resetn,
+            resetn  => r_int_resetn,
             en      => w_sub_en,
             data    => w_remapped,
             factor  => r_factor,

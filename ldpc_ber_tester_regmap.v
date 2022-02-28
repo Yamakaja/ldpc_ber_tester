@@ -21,6 +21,9 @@ module ldpc_ber_tester_regmap #(
     input       [ 31:0]                 up_wdata,
 
 
+    // Interrupt output
+    output                              up_interrupt,
+
     // Data interface
     input                               data_clk,
 
@@ -40,7 +43,10 @@ module ldpc_ber_tester_regmap #(
     input       [ 63:0]                 data_finished_blocks,
     input       [ 63:0]                 data_bit_errors,
     input       [ 31:0]                 data_in_flight,
-    input       [ 31:0]                 data_last_status
+    input       [ 31:0]                 data_last_status,
+    input       [ 63:0]                 data_iter_count,
+    input       [ 63:0]                 data_failed_blocks,
+    input       [ 63:0]                 data_last_failed
 );
 
     localparam  [ 31:0]                 CORE_VERSION = 32'h00010061; // 1.00.a
@@ -57,17 +63,64 @@ module ldpc_ber_tester_regmap #(
     reg         [ 31:0]                 up_ctrl_word;
     reg         [127:0]                 up_last_mask;
 
+    // Control which interrupts should be fired
+    //
+    // -----------------------------------------------------------------------
+    // | ID | Description                                                    |
+    // -----------------------------------------------------------------------
+    // | 0  | Block decode interrupt. This interrupt fires if a new block has|
+    // |    | failed to be decoded and can be read.                          |
+    // -----------------------------------------------------------------------
+    //
+    reg         [  0:0]                 up_interrupt_enable;
+    wire        [  0:0]                 up_interrupt_status;
+    reg         [  0:0]                 up_interrupt_clear;
+
+    reg         [ 63:0]                 up_last_failed_buf;
+    reg                                 up_last_failed_valid;
+
     // up input signals (after CDC)
     wire        [ 63:0]                 up_finished_blocks;
     wire        [ 63:0]                 up_bit_errors;
     wire        [ 31:0]                 up_in_flight;
     wire        [ 31:0]                 up_last_status;
+    wire        [ 63:0]                 up_iter_count;
+    wire        [ 63:0]                 up_failed_blocks;
+    wire        [ 63:0]                 up_last_failed;
 
     wire                                data_sw_reset;
+
+    // Interrupt output logic. The interrupt line should only go high if
+    // a enabled interrupt is triggered.
+    assign up_interrupt_status = {up_last_failed_valid};
+    assign up_interrupt = |(up_interrupt_status & up_interrupt_enable);
+
+    // Last failed block tracking
+    always @(posedge up_clk) begin
+        if (!up_resetn) begin
+            up_last_failed_buf      <= 64'h0;
+            up_last_failed_valid    <= 0;
+        end else begin
+            if (up_last_failed_valid) begin
+                // Reset status when requested
+                if (up_interrupt_clear[0])
+                    up_last_failed_valid <= 0;
+
+            end else begin
+                if (up_last_failed != up_last_failed_buf) begin
+                    up_last_failed_buf <= up_last_failed;
+                    up_last_failed_valid <= 1;
+                end
+            end
+        end
+
+    end
 
     // up write interface
     always @(posedge up_clk) begin
         up_wack <= up_wreq;
+
+        up_interrupt_clear <= 'h0;
 
         if (!up_resetn) begin
             up_scratch      <= 'h0;
@@ -75,9 +128,11 @@ module ldpc_ber_tester_regmap #(
             up_sw_resetn    <= 'h0;
             up_factor       <= 'h0;
             up_offset       <= 'h0;
+            up_interrupt_enable <= 'h0;
             up_din_beats    <= 'h0;
             up_ctrl_word    <= 'h0;
             up_last_mask    <= 'h0;
+
         end else if (up_wreq) begin
             if (up_waddr == 'h02)
                 up_scratch <= up_wdata;
@@ -95,7 +150,7 @@ module ldpc_ber_tester_regmap #(
                 up_ctrl_word <= up_wdata;
 
             if (up_waddr == 'h14)
-                up_last_mask[31: 0] <= up_wdata;
+                up_last_mask[31:0] <= up_wdata;
 
             if (up_waddr == 'h15)
                 up_last_mask[63:32] <= up_wdata;
@@ -105,6 +160,12 @@ module ldpc_ber_tester_regmap #(
 
             if (up_waddr == 'h17)
                 up_last_mask[127:96] <= up_wdata;
+
+            if (up_waddr == 'h18)
+                up_interrupt_enable <= up_wdata[0:0];
+
+            if (up_waddr == 'h19)
+                up_interrupt_clear <= up_wdata[0:0];
 
         end else begin
             // Yes, this doesn't guarantee a 1-cycle pulse, but that's good
@@ -141,7 +202,7 @@ module ldpc_ber_tester_regmap #(
                 // Control register:
                 //  0: dataflow enable
                 //  1: SW resetn
-                'h10: up_rdata <= {up_sw_resetn, up_en};
+                'h10: up_rdata <= {30'h0, up_sw_resetn, up_en};
 
                 // AWGN config
                 'h11: up_rdata <= {8'h0, up_offset, up_factor};
@@ -159,6 +220,11 @@ module ldpc_ber_tester_regmap #(
                 'h16: up_rdata <= up_last_mask[ 95:64];
                 'h17: up_rdata <= up_last_mask[127:96];
 
+                // Interrupt control
+                'h18: up_rdata <= {31'h0, up_interrupt_enable};
+                'h19: up_rdata <= 'h0;
+                'h1a: up_rdata <= {31'h0, up_interrupt_status};
+
                 // Result data
                 //
                 // Processed blocks
@@ -174,6 +240,18 @@ module ldpc_ber_tester_regmap #(
 
                 // Last status word
                 'h25: up_rdata <= up_last_status;
+
+                // Iteration count
+                'h26: up_rdata <= up_iter_count[31:0];
+                'h27: up_rdata <= up_iter_count[63:32];
+
+                // Failed block count
+                'h28: up_rdata <= up_failed_blocks[31:0];
+                'h29: up_rdata <= up_failed_blocks[63:32];
+
+                // Last failed block
+                'h2a: up_rdata <= up_last_failed_buf[31:0];
+                'h2b: up_rdata <= up_last_failed_buf[63:32];
 
                 default: up_rdata <= 'h0;
 
@@ -214,19 +292,25 @@ module ldpc_ber_tester_regmap #(
     );
 
     sync_data #(
-        .NUM_OF_BITS    (64+64+32+32),
+        .NUM_OF_BITS    (64+64+32+32+64*3),
         .ASYNC_CLK      (1)
     ) i_sync_feedback (
         .in_clk     (data_clk),
         .in_data    ({data_finished_blocks,
                       data_bit_errors,
                       data_in_flight,
-                      data_last_status}),
+                      data_last_status,
+                      data_iter_count,
+                      data_failed_blocks,
+                      data_last_failed}),
         .out_clk    (up_clk),
         .out_data   ({up_finished_blocks,
                       up_bit_errors,
                       up_in_flight,
-                      up_last_status})
+                      up_last_status,
+                      up_iter_count,
+                      up_failed_blocks,
+                      up_last_failed})
     );
 
 endmodule

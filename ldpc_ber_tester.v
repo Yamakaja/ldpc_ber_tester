@@ -24,6 +24,8 @@ module ldpc_ber_tester #(
     output      [  1:0]     s_axi_rresp,
     output      [ 31:0]     s_axi_rdata,
 
+    output                  interrupt,
+
     // Datapath clock and reset
     input                   data_clk,
     input                   data_resetn,
@@ -76,6 +78,9 @@ module ldpc_ber_tester #(
     wire    [  63:0]        data_bit_errors;
     wire    [  31:0]        data_in_flight;
     wire    [  31:0]        data_last_status;
+    wire    [  63:0]        data_iter_count;
+    wire    [  63:0]        data_failed_blocks;
+    wire    [  63:0]        data_last_failed;
 
     ldpc_ber_tester_ber_counter i_ber_counter (
         .clk                    (data_clk),
@@ -114,7 +119,10 @@ module ldpc_ber_tester #(
 
         .finished_blocks        (data_finished_blocks),
         .in_flight              (data_in_flight),
-        .last_status            (data_last_status)
+        .last_status            (data_last_status),
+        .iter_count             (data_iter_count),
+        .failed_blocks          (data_failed_blocks),
+        .last_failed            (data_last_failed)
 
     );
 
@@ -137,6 +145,8 @@ module ldpc_ber_tester #(
         .up_waddr               (up_waddr),
         .up_wdata               (up_wdata),
 
+        .up_interrupt           (interrupt),
+
         .data_clk               (data_clk),
         
         .data_en                (data_en),
@@ -150,7 +160,10 @@ module ldpc_ber_tester #(
         .data_finished_blocks   (data_finished_blocks),
         .data_bit_errors        (data_bit_errors),
         .data_in_flight         (data_in_flight),
-        .data_last_status       (data_last_status)
+        .data_last_status       (data_last_status),
+        .data_iter_count        (data_iter_count),
+        .data_failed_blocks     (data_failed_blocks),
+        .data_last_failed       (data_last_failed)
     );
 
     up_axi #(
