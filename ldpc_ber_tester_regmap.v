@@ -57,6 +57,7 @@ module ldpc_ber_tester_regmap #(
     reg         [ 31:0]                 up_scratch;
     reg                                 up_en;
     reg                                 up_sw_resetn;
+    reg         [  4:0]                 up_sw_resetn_counter;
     reg         [ 15:0]                 up_factor;
     reg         [  7:0]                 up_offset;
     reg         [ 15:0]                 up_din_beats;
@@ -126,6 +127,7 @@ module ldpc_ber_tester_regmap #(
             up_scratch      <= 'h0;
             up_en           <= 'h0;
             up_sw_resetn    <= 'h0;
+            up_sw_resetn_counter <= 'h0;
             up_factor       <= 'h0;
             up_offset       <= 'h0;
             up_interrupt_enable <= 'h0;
@@ -137,8 +139,13 @@ module ldpc_ber_tester_regmap #(
             if (up_waddr == 'h02)
                 up_scratch <= up_wdata;
 
-            if (up_waddr == 'h10)
-                {up_sw_resetn, up_en} <= up_wdata[1:0];
+            if (up_waddr == 'h10) begin 
+                up_en <= up_wdata[0];
+
+                // sw_resetn
+                if (up_wdata[1])
+                    up_sw_resetn_counter <= 16;
+            end
 
             if (up_waddr == 'h11)
                 {up_offset, up_factor} <= up_wdata[23:0];
@@ -167,11 +174,12 @@ module ldpc_ber_tester_regmap #(
             if (up_waddr == 'h19)
                 up_interrupt_clear <= up_wdata[0:0];
 
-        end else begin
-            // Yes, this doesn't guarantee a 1-cycle pulse, but that's good
-            // enogh for me :)
-            up_sw_resetn <= 'h1;
+            if (|up_sw_resetn_counter)
+                up_sw_resetn_counter <= up_sw_resetn_counter - 1;
+
+            up_sw_resetn <= !up_sw_resetn_counter;
         end
+
     end
 
     // up read interface
