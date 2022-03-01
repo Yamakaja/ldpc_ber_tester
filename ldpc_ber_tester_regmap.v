@@ -97,7 +97,7 @@ module ldpc_ber_tester_regmap #(
 
     // Last failed block tracking
     always @(posedge up_clk) begin
-        if (!up_resetn) begin
+        if (!up_resetn || !up_sw_resetn) begin
             up_last_failed_buf      <= 64'h0;
             up_last_failed_valid    <= 0;
         end else begin
