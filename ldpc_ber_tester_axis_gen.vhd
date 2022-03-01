@@ -74,7 +74,11 @@ architecture beh of ldpc_ber_tester_axis_gen is
 
     signal r_ctrl_vs_din    : unsigned(6 downto 0);
     signal r_ctrl_tvalid    : std_logic;
+
     signal r_status_tready  : std_logic;
+
+    signal r_status_valid   : std_logic;
+    signal r_status_data    : std_logic_vector(31 downto 0);
 
     signal r_finished_blocks: unsigned(63 downto 0);
     signal r_in_flight      : unsigned(31 downto 0);
@@ -107,8 +111,8 @@ begin
 
     w_running       <= or_reduce(std_logic_vector(r_ctrl_vs_din));
     w_din_finish    <= r_axis_tvalid and r_axis_tlast and din_tready;
-    w_status_iter   <= unsigned(status_tdata(23 downto 18));
-    w_status_pass   <= status_tdata(15);
+    w_status_iter   <= unsigned(r_status_data(23 downto 18));
+    w_status_pass   <= r_status_data(15);
 
     reset_buf : process (clk)
     begin
@@ -130,6 +134,8 @@ begin
                 r_iter_count        <= (others => '0');
                 r_failed_blocks     <= (others => '0');
                 r_last_failed       <= (others => '0');
+                r_status_valid      <= '0';
+                r_status_data       <= (others => '0');
             else
                 r_status_tready <= '1';
 
@@ -137,9 +143,11 @@ begin
                 r_ctrl_tvalid <= (en and not or_reduce(std_logic_vector(r_in_flight(31 downto 2))))
                                  or (r_ctrl_tvalid and (not ctrl_tready));
 
-                if r_status_tready = '1' and status_tvalid = '1' then
+                r_status_valid <= r_status_tready and status_tvalid;
+                r_status_data <= status_tdata;
+                if r_status_valid = '1' then
                     r_finished_blocks   <= r_finished_blocks + 1;
-                    r_last_status       <= status_tdata;
+                    r_last_status       <= r_status_data;
                     r_iter_count        <= r_iter_count + w_status_iter;
                     if w_status_pass = '0' then
                         r_failed_blocks <= r_failed_blocks + 1;

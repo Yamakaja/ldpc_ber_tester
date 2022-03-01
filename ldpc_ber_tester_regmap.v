@@ -124,62 +124,65 @@ module ldpc_ber_tester_regmap #(
         up_interrupt_clear <= 'h0;
 
         if (!up_resetn) begin
-            up_scratch      <= 'h0;
-            up_en           <= 'h0;
-            up_sw_resetn    <= 'h0;
-            up_sw_resetn_counter <= 'h0;
-            up_factor       <= 'h0;
-            up_offset       <= 'h0;
-            up_interrupt_enable <= 'h0;
-            up_din_beats    <= 'h0;
-            up_ctrl_word    <= 'h0;
-            up_last_mask    <= 'h0;
+            up_scratch              <= 'h0;
+            up_en                   <= 'h0;
+            up_sw_resetn            <= 'h0;
+            up_sw_resetn_counter    <= 'h0;
+            up_factor               <= 'h0;
+            up_offset               <= 'h0;
+            up_interrupt_enable     <= 'h0;
+            up_din_beats            <= 'h0;
+            up_ctrl_word            <= 'h0;
+            up_last_mask            <= 'h0;
 
-        end else if (up_wreq) begin
-            if (up_waddr == 'h02)
-                up_scratch <= up_wdata;
+        end else begin
 
-            if (up_waddr == 'h10) begin 
-                up_en <= up_wdata[0];
+            if (up_wreq) begin
+                if (up_waddr == 'h02)
+                    up_scratch <= up_wdata;
 
-                // sw_resetn
-                if (up_wdata[1])
-                    up_sw_resetn_counter <= 16;
+                if (up_waddr == 'h10) begin 
+                    up_en <= up_wdata[0];
+
+                    // sw_resetn
+                    if (!up_wdata[1])
+                        up_sw_resetn_counter <= 5'hf;
+                end
+
+                if (up_waddr == 'h11)
+                    {up_offset, up_factor} <= up_wdata[23:0];
+
+                if (up_waddr == 'h12)
+                    up_din_beats <= up_wdata[15:0];
+
+                if (up_waddr == 'h13)
+                    up_ctrl_word <= up_wdata;
+
+                if (up_waddr == 'h14)
+                    up_last_mask[31:0] <= up_wdata;
+
+                if (up_waddr == 'h15)
+                    up_last_mask[63:32] <= up_wdata;
+
+                if (up_waddr == 'h16)
+                    up_last_mask[95:64] <= up_wdata;
+
+                if (up_waddr == 'h17)
+                    up_last_mask[127:96] <= up_wdata;
+
+                if (up_waddr == 'h18)
+                    up_interrupt_enable <= up_wdata[0:0];
+
+                if (up_waddr == 'h19)
+                    up_interrupt_clear <= up_wdata[0:0];
             end
 
-            if (up_waddr == 'h11)
-                {up_offset, up_factor} <= up_wdata[23:0];
-
-            if (up_waddr == 'h12)
-                up_din_beats <= up_wdata[15:0];
-
-            if (up_waddr == 'h13)
-                up_ctrl_word <= up_wdata;
-
-            if (up_waddr == 'h14)
-                up_last_mask[31:0] <= up_wdata;
-
-            if (up_waddr == 'h15)
-                up_last_mask[63:32] <= up_wdata;
-
-            if (up_waddr == 'h16)
-                up_last_mask[95:64] <= up_wdata;
-
-            if (up_waddr == 'h17)
-                up_last_mask[127:96] <= up_wdata;
-
-            if (up_waddr == 'h18)
-                up_interrupt_enable <= up_wdata[0:0];
-
-            if (up_waddr == 'h19)
-                up_interrupt_clear <= up_wdata[0:0];
-
+            // Software reset logic
             if (|up_sw_resetn_counter)
                 up_sw_resetn_counter <= up_sw_resetn_counter - 1;
 
             up_sw_resetn <= !up_sw_resetn_counter;
         end
-
     end
 
     // up read interface
