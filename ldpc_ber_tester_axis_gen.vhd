@@ -231,8 +231,7 @@ begin
     din_tvalid  <= r_axis_tvalid;
     din_tlast   <= r_axis_tlast;
 
-    w_sub_en <= '1' when r_state /= IDLE or w_running = '1' else '0';
---  w_sub_en <= '1' when r_state /= IDLE or w_running = '1' or resetn = '0' else '0';
+    w_sub_en <= '1' when r_state = INITIALIZING or (r_state = RUNNING and w_running = '1' and r_axis_tvalid = '1' and din_tready = '1') else '0';
 
     state_machine : process (clk)
     begin

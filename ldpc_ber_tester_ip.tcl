@@ -12,6 +12,7 @@ adi_ip_files ldpc_ber_tester [list \
     "../boxmuller/src/shifter.vhd" \
     "../boxmuller/src/xoroshiro128plus.vhd" \
     "$ad_hdl_dir/library/common/up_axi.v" \
+    "$ad_hdl_dir/library/common/util_axis_buf.v" \
     "ldpc_ber_tester_ber_counter.v" \
     "ldpc_ber_tester_axis_gen.vhd" \
     "ldpc_ber_tester_regmap.v" \

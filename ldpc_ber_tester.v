@@ -82,6 +82,11 @@ module ldpc_ber_tester #(
     wire    [  63:0]        data_failed_blocks;
     wire    [  63:0]        data_last_failed;
 
+    wire                    data_axis_din_buf_tvalid;
+    wire                    data_axis_din_buf_tready;
+    wire    [ 127:0]        data_axis_din_buf_tdata;
+    wire                    data_axis_din_buf_tlast;
+
     ldpc_ber_tester_ber_counter i_ber_counter (
         .clk                    (data_clk),
         .resetn                 (data_resetn & data_sw_resetn),
@@ -106,10 +111,10 @@ module ldpc_ber_tester #(
         .ctrl_tvalid            (m_axis_ctrl_tvalid),
         .ctrl_tready            (m_axis_ctrl_tready),
 
-        .din_tvalid             (m_axis_din_tvalid),
-        .din_tready             (m_axis_din_tready),
-        .din_tlast              (m_axis_din_tlast),
-        .din_tdata              (m_axis_din_tdata),
+        .din_tvalid             (data_axis_din_buf_tvalid),
+        .din_tready             (data_axis_din_buf_tready),
+        .din_tlast              (data_axis_din_buf_tlast),
+        .din_tdata              (data_axis_din_buf_tdata),
 
         .status_tvalid          (s_axis_status_tvalid),
         .status_tready          (s_axis_status_tready),
@@ -124,6 +129,21 @@ module ldpc_ber_tester #(
         .failed_blocks          (data_failed_blocks),
         .last_failed            (data_last_failed)
 
+    );
+
+    util_axis_buf #( .DATA_WIDTH(128) ) i_din_buf (
+        .clk                    (data_clk),
+        .resetn                 (data_resetn),
+
+        .s_axis_valid           (data_axis_din_buf_tvalid),
+        .s_axis_ready           (data_axis_din_buf_tready),
+        .s_axis_data            (data_axis_din_buf_tdata),
+        .s_axis_last            (data_axis_din_buf_tlast),
+
+        .m_axis_valid           (m_axis_din_tvalid),
+        .m_axis_ready           (m_axis_din_tready),
+        .m_axis_data            (m_axis_din_tdata),
+        .m_axis_last            (m_axis_din_tlast)
     );
 
     assign m_axis_ctrl_tdata = data_ctrl_word;

@@ -1,6 +1,7 @@
 LIBRARY_NAME := ldpc_ber_tester
 
 GENERIC_DEPS += ../common/up_axi.v
+GENERIC_DEPS += ../common/util_axis_buf.v
 GENERIC_DEPS += ldpc_ber_tester_regmap.v
 GENERIC_DEPS += ldpc_ber_tester_ber_counter.v
 GENERIC_DEPS += ldpc_ber_tester.v
