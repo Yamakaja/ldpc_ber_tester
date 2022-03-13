@@ -98,7 +98,7 @@ module ldpc_ber_tester #(
         .bit_errors             (data_bit_errors)
     );
 
-    ldpc_ber_tester_axis_gen i_ctrl (
+    ldpc_ber_tester_axis_gen #( .SEED_ID (SEED_ID) ) i_ctrl (
         .clk                    (data_clk),
         .resetn                 (data_resetn),
         .en                     (data_en),
