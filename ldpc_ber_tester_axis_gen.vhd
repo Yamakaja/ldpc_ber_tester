@@ -65,7 +65,6 @@ architecture beh of ldpc_ber_tester_axis_gen is
 
     signal r_valid_counter  : unsigned(COUNTER_WIDTH - 1 downto 0);
     signal r_axis_tdata     : std_logic_vector(din_tdata'range);
-    signal r_axis_tvalid    : std_logic;
     signal r_axis_tlast     : std_logic;
     signal r_din_beats      : unsigned(15 downto 0);
     signal r_beat_counter   : unsigned(15 downto 0);
@@ -98,6 +97,8 @@ architecture beh of ldpc_ber_tester_axis_gen is
     signal w_status_iter    : unsigned(5 downto 0);
     signal w_status_pass    : std_logic;
 
+    signal w_axis_tvalid    : std_logic;
+
 begin
 
     finished_blocks <= std_logic_vector(r_finished_blocks);
@@ -110,7 +111,7 @@ begin
     last_failed     <= std_logic_vector(r_last_failed);
 
     w_running       <= or_reduce(std_logic_vector(r_ctrl_vs_din));
-    w_din_finish    <= r_axis_tvalid and r_axis_tlast and din_tready;
+    w_din_finish    <= w_axis_tvalid and r_axis_tlast and din_tready;
     w_status_iter   <= unsigned(r_status_data(23 downto 18));
     w_status_pass   <= r_status_data(15);
 
@@ -228,10 +229,11 @@ begin
 
     -- Output driving registers
     din_tdata   <= r_axis_tdata;
-    din_tvalid  <= r_axis_tvalid;
+    w_axis_tvalid <= '1' when (r_state = RUNNING and w_running = '1') else '0';
+    din_tvalid  <= w_axis_tvalid;
     din_tlast   <= r_axis_tlast;
 
-    w_sub_en <= '1' when r_state = INITIALIZING or (r_state = RUNNING and w_running = '1' and r_axis_tvalid = '1' and din_tready = '1') else '0';
+    w_sub_en <= '1' when r_state = INITIALIZING or (w_axis_tvalid = '1' and din_tready = '1') else '0';
 
     state_machine : process (clk)
     begin
@@ -240,7 +242,6 @@ begin
                 r_state         <= IDLE;
                 r_valid_counter <= (others => '0');
                 r_axis_tdata    <= (others => '0');
-                r_axis_tvalid   <= '0';
                 r_axis_tlast    <= '0';
                 r_beat_counter  <= (others => '0');
                 r_din_beats     <= (others => '0');
@@ -267,14 +268,11 @@ begin
                             r_state <= RUNNING;
 
                             r_beat_counter <= (others => '0');
-                            r_axis_tvalid <= '1';
                             r_axis_tdata <= w_remapped;
                         end if;
 
                     when RUNNING =>
-                        r_axis_tvalid <= '1';
-
-                        if r_axis_tvalid = '1' and din_tready = '1' then
+                        if w_running = '1' and din_tready = '1' then
                             -- Enable tlast on last beat
                             if r_beat_counter + 2 = r_din_beats then
                                 r_axis_tlast <= '1';
@@ -287,7 +285,6 @@ begin
                                 -- Going low for one cycle
                                 r_beat_counter <= (others => '0');
                                 r_axis_tlast <= '0';
-                                r_axis_tvalid <= '0';
 
                                 if en = '0' and r_ctrl_vs_din = 1 then
                                     r_state <= IDLE;
